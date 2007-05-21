@@ -44,7 +44,7 @@ typedef struct st_my_stmt {
 	int							*param_formats;
 	char						*param_types;
 	struct st_my_res			*res;
-	DWORD						affected_rows;
+//	DWORD						affected_rows;
 } MY_STMT;
 
 typedef struct st_my_con {

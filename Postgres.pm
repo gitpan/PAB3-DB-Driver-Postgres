@@ -18,7 +18,7 @@ use constant {
 };
 
 BEGIN {
-	$VERSION = '1.0.0';
+	$VERSION = '1.0.1';
 	
 	require XSLoader;
 	XSLoader::load( __PACKAGE__, $VERSION );
@@ -295,7 +295,7 @@ __END__
 PAB3::DB::Driver::Postgres - Perl5 wrapper to the pgsql libary and driver
 for the PAB3::DB class
 
-See more at L<PAB3::DB>
+See more at L<the PAB3::DB manpage|PAB3::DB>
 
 =head1 SYNOPSIS
 
@@ -420,7 +420,7 @@ If you plan using different connections in your scripts which may access to
 the same interpreter you should explicitly set I<$linkid> in all expected
 functions.
 You can alternatively use the C<PAB3::DB> class. It takes care of it by itself.
-See more at L<PAB3::DB>.
+See more at L<the PAB3::DB manpage|PAB3::DB>.
 
 =head2 Examples
 
@@ -538,6 +538,27 @@ B<Example>
   }
 
 
+=item db_connect ( %arg )
+
+Wrapper to connect() used by L<PAB3::DB::connect()|PAB3::DB/connect>.
+
+Following arguments are supported:
+
+  host       => hostname
+  user       => authorized username
+  auth       => authorization password
+  db         => database name
+  port       => port for tcp/ip connection
+  options    => hashref with parameters mapped to $client_flag
+                these parameters are:
+                'reconnect'
+                a description can be found at connect() above
+
+B<Return Values>
+
+Returns a connection link identifier ($linkid) on success, or NULL on failure. 
+
+
 =item close ()
 
 =item close ( $linkid )
@@ -548,8 +569,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values:>
 
@@ -567,8 +588,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$charset>
 
@@ -589,8 +610,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values:>
 
@@ -608,8 +629,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values:>
 
@@ -633,8 +654,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$query>
 
@@ -661,8 +682,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$query>
 
@@ -691,7 +712,8 @@ B<Parameters>
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()>.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare>.
 
 I<$p_num>
 
@@ -730,7 +752,8 @@ B<Parameters>
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()>.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare>.
 
 I<@bind_values>
 
@@ -760,20 +783,23 @@ TRUE on success or FALSE on error.
 =item affected_rows ( $stmtid )
 
 Gets the number of affected rows in a previous SQL operation
-After executing a statement with L<query()> or L<execute()>, returns the number
+After executing a statement with L<query()|PAB3::DB::Driver::Postgres/query> or
+L<execute()|PAB3::DB::Driver::Postgres/execute>, returns the number
 of rows changed (for UPDATE), deleted (for DELETE), or inserted (for INSERT).
-For SELECT statements, affected_rows() works like L<num_rows()>. 
+For SELECT statements, affected_rows() works like
+L<num_rows()|PAB3::DB::Driver::Postgres/num_rows>. 
 
 B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()>.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -797,12 +823,13 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()>.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 I<$field>
 
@@ -843,11 +870,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -865,11 +894,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -880,7 +911,7 @@ result set's columns or NULL if there are no more rows in resultset.
 If two or more columns of the result have the same field names, the last
 column will take precedence. To access the other column(s) of the same name,
 you either need to access the result with numeric indices by using
-L<fetch_row()> or add alias names.
+L<fetch_row()|PAB3::DB::Driver::Postgres/fetch_row> or add alias names.
 
 
 =item fetch_col ( $resid )
@@ -893,11 +924,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -915,11 +948,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -937,11 +972,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -958,11 +995,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -979,15 +1018,18 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 I<$offset>
 
-Absolute row position. Valid between 0 and L<num_rows()> - 1.
+Absolute row position. Valid between 0 and
+L<num_rows()|PAB3::DB::Driver::Postgres/num_rows> - 1.
 
 B<Return Values>
 
@@ -1010,11 +1052,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -1031,11 +1075,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -1056,11 +1102,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 I<$offset>
 
@@ -1082,11 +1130,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -1103,15 +1153,18 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 I<$offset>
 
-Absolute field position. Valid between 0 and L<num_fields()> - 1.
+Absolute field position. Valid between 0 and
+L<num_fields()|PAB3::DB::Driver::Postgres/num_fields> - 1.
 
 B<Return Values>
 
@@ -1134,11 +1187,13 @@ B<Paramters>
 
 I<$resid>
 
-A result set identifier returned by L<query()> or L<execute()>.
+A result set identifier returned by L<query()|PAB3::DB::Driver::Postgres/query>
+or L<execute()|PAB3::DB::Driver::Postgres/execute>.
 
 I<$stmtid>
 
-A statement identifier returned by L<prepare()> which has been executed.
+A statement identifier returned by
+L<prepare()|PAB3::DB::Driver::Postgres/prepare> which has been executed.
 
 B<Return Values>
 
@@ -1160,8 +1215,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 I<$mode>
 
@@ -1183,8 +1238,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values>
 
@@ -1201,8 +1256,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values>
 
@@ -1219,8 +1274,8 @@ B<Parameters>
 
 I<$linkid>
 
-A link identifier returned by L<connect()>. If the link identifier is not
-specified, the last link is assumed.
+A link identifier returned by L<connect()|PAB3::DB::Driver::Postgres/connect>.
+If the link identifier is not specified, the last link is assumed.
 
 B<Return Values>
 

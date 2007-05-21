@@ -290,17 +290,16 @@ CODE:
 		res = my_result_add( stmt->con, pres );
 		stmt->res = res;
 		res->stmt = stmt;
-		con->affected_rows = stmt->affected_rows = res->numrows;
+		con->affected_rows = res->numrows;
 		RETVAL = (UV) res;
 		break;
 	case PGRES_COMMAND_OK:
 		RETVAL = 1;
-		con->affected_rows = stmt->affected_rows
-			= atol( PQcmdTuples( pres ) );
+		con->affected_rows = atol( PQcmdTuples( pres ) );
 		PQclear( pres );
 		break;
 	default:
-		con->affected_rows = stmt->affected_rows = 0;
+		con->affected_rows = 0;
 		PQclear( pres );
 		if( step || ( con->client_flag & CLIENT_RECONNECT ) == 0 ) goto error;
 		if( PQstatus( con->con ) != CONNECTION_OK ) {
