@@ -213,8 +213,11 @@ CODE:
 	}
 	con = (MY_CON *) my_con_verify( linkid );
 	if( con == NULL ) goto error;
-	New( 1, stmtname, sizeof( int ) * 2 + 1, char );
-	my_itoa( stmtname, (int) stmtname, 16 );
+	New( 1, stmtname, sizeof( DWORD ) * 2 + 3, char );
+	stmtname[0] = 's';
+	stmtname[1] = 't';
+	my_itoa( &stmtname[2], (int) con->stmt_counter ++, 16 );
+	printf( "using statement name [%s] %u\n", stmtname, con->stmt_counter - 1 );
 	tmp = my_stmt_convert( sql, sqllen, &plen, NULL );
 	pstmt = PQprepare( con->con, stmtname, tmp, 0, NULL );
 	switch( PQresultStatus( pstmt ) ) {
@@ -275,10 +278,10 @@ CODE:
 		if( stmt->res->bound )
 			my_result_rem( stmt->res );
 		else
-			stmt->res->stmt = NULL;
+			stmt->res = NULL;
 	}
 	con = stmt->con;
-	for( i = 1; i <= items; i ++ )
+	for( i = 1; i < items; i ++ )
 		if( ! my_stmt_bind_param( stmt, i, ST( i ), 0 ) ) goto error;
 	pres = PQexecPrepared(
 		con->con, stmt->id, stmt->param_count,

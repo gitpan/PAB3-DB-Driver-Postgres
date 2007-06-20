@@ -350,6 +350,7 @@ int my_stmt_or_con( UV *ptr ) {
 int my_stmt_bind_param( MY_STMT *stmt, DWORD p_num, SV *val, char type ) {
 	STRLEN vl;
 	DWORD i;
+	char *str;
 	if( p_num == 0 || stmt->param_count < p_num ) {
 		my_set_error( "Parameter %lu out of range (%lu)", p_num, stmt->param_count );
 		return 0;
@@ -364,17 +365,19 @@ int my_stmt_bind_param( MY_STMT *stmt, DWORD p_num, SV *val, char type ) {
 		stmt->param_lengths[i] = 0;
 		return 1;
 	}
-	vl = SvLEN( val );
 	switch( stmt->param_types[i] ) {
 	case 'b':
+		str = SvPVbytex( val, vl );
 		stmt->param_formats[i] = 1; // set binary
 		Renew( stmt->param_values[i], vl, char );
-		Copy( SvPVbyte( val, vl ), stmt->param_values[i], vl, char );
+		Copy( str, stmt->param_values[i], vl, char );
 		stmt->param_lengths[i] = vl;
 		return 1;
 	}
+	str = SvPVx( val, vl );
+	//printf( "bind_param %d [%s]\n", p_num, str );
 	Renew( stmt->param_values[i], vl + 1, char );
-	Copy( SvPV( val, vl ), stmt->param_values[i], vl, char );
+	Copy( str, stmt->param_values[i], vl, char );
 	stmt->param_values[i][vl] = '\0';
 	stmt->param_lengths[i] = vl;
 	stmt->param_formats[i] = 0; // not binary
@@ -499,10 +502,10 @@ char *my_strtolower( char *a ) {
 	return ret;
 }
 
-char *my_strrev( char *str ) {
+char *my_strrev( char *str, size_t len ) {
 	char *p1, *p2;
 	if( ! str || ! *str ) return str;
-	for( p1 = str, p2 = str + strlen( str ) - 1; p2 > p1; ++ p1, -- p2 ) {
+	for( p1 = str, p2 = str + len - 1; p2 > p1; ++ p1, -- p2 ) {
 		*p1 ^= *p2;
 		*p2 ^= *p1;
 		*p1 ^= *p2;
@@ -511,44 +514,46 @@ char *my_strrev( char *str ) {
 }
 
 char *my_itoa( char *str, int value, int radix ) {
-	int  rem = 0;
-	int  pos = 0;
-	char ch  = '!' ;
-	do {
-		rem = value % radix ;
-		value /= radix;
-		if( 16 == radix ) {
-			if( rem >= 10 && rem <= 15 ) {
-				switch( rem ) {
-				case 10:
-					ch = 'A';
-					break;
-				case 11:
-					ch = 'B';
-					break;
-				case 12:
-					ch = 'C';
-					break;
-				case 13:
-					ch = 'D';
-					break;
-				case 14:
-					ch = 'E';
-					break;
-				case 15:
-					ch = 'F';
-					break;
-				}
+	int rem;
+	char *ret = str;
+	switch( radix ) {
+	case 16:
+		do {
+			rem = value % 16;
+			value /= 16;
+			switch( rem ) {
+			case 10:
+				*ret ++ = 'A';
+				break;
+			case 11:
+				*ret ++ = 'B';
+				break;
+			case 12:
+				*ret ++ = 'C';
+				break;
+			case 13:
+				*ret ++ = 'D';
+				break;
+			case 14:
+				*ret ++ = 'E';
+				break;
+			case 15:
+				*ret ++ = 'F';
+				break;
+			default:
+				*ret ++ = (char) ( rem + 0x30 );
+				break;
 			}
-		}
-		if( '!' == ch ) {
-			str[pos ++] = (char) ( rem + 0x30 );
-		}
-		else {
-			str[pos ++] = ch ;
-		}
-	} while( value != 0 );
-	str[pos] = '\0' ;
-	my_strrev( str );
-	return &str[pos];
+		} while( value != 0 );
+		break;
+	default:
+		do {
+			rem = value % radix;
+			value /= radix;
+			*ret ++ = (char) ( rem + 0x30 );
+		} while( value != 0 );
+	}
+	*ret = '\0' ;
+	my_strrev( str, ret - str );
+	return ret;
 }

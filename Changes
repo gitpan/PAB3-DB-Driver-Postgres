@@ -1,0 +1,5 @@
+Revision history for Perl extension PAB3::DB::Driver::Postgres.
+
+version 1.0.2
+    - fixed broken parameter binding in execute() method
+    - fixed internal statement names
