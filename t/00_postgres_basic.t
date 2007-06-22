@@ -11,6 +11,7 @@ print "ok 2\n";
 $_res = pg_connect();
 if( ! $_res ) {
 	$_res = pg_error();
+	print STDERR "skipped:\n", $_res if $_res;
 }
 print "ok 3\n";
 

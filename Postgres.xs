@@ -15,8 +15,6 @@ BOOT:
 	MY_CXT.lasterror[0] = '\0';
 }
 
-#define __PACKAGE__ "PAB3::DB::Driver::Postgres"
-
 
 #/******************************************************************************
 # * _connect( [host [, user [, auth [, db [, port [, flags]]]]]] )
@@ -24,11 +22,11 @@ BOOT:
 
 UV
 _connect( server = NULL, user = NULL, auth = NULL, db = NULL, client_flag = 0 )
-const char *server
-const char *user
-const char *auth
-const char *db
-unsigned long client_flag
+	const char *server;
+	const char *user;
+	const char *auth;
+	const char *db;
+	UV client_flag;
 PREINIT:
 	dMY_CXT;
 	char *s1, *tmp = NULL;
@@ -49,7 +47,7 @@ CODE:
 	pcon = PQsetdbLogin( host, port, NULL, NULL, db, user, auth );
 	Safefree( tmp );
 	if( PQstatus( pcon ) == CONNECTION_OK ) {
-		con = my_con_add( pcon );
+		con = my_con_add( &MY_CXT, pcon );
 		con->client_flag = client_flag | MYCF_AUTOCOMMIT;
 		RETVAL = (UV) con;
 	}
@@ -69,11 +67,13 @@ OUTPUT:
 
 void
 close( linkid = 0 )
-UV linkid
+	UV linkid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_get_type( &linkid ) ) {
+	switch( my_get_type( &MY_CXT, &linkid ) ) {
 	case MY_TYPE_CON:
-		my_con_rem( (MY_CON *) linkid );
+		my_con_rem( &MY_CXT, (MY_CON *) linkid );
 		break;
 	case MY_TYPE_RES:
 		my_result_rem( (MY_RES *) linkid );
@@ -90,11 +90,12 @@ CODE:
 
 UV
 reconnect( linkid = 0 )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 CODE:
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 	my_con_cleanup( con );
 	PQreset( con->con );
@@ -117,6 +118,7 @@ OUTPUT:
 UV
 query( ... )
 PREINIT:
+	dMY_CXT;
 	UV linkid = 0;
 	const char *sql;
 	MY_CON *con;
@@ -135,7 +137,7 @@ CODE:
 	default:	
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::query(linkid = 0, query)" );
 	}
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 retry:
 	pres = PQexec( con->con, sql );
@@ -183,6 +185,7 @@ OUTPUT:
 UV
 prepare( ... )
 PREINIT:
+	dMY_CXT;
 	const char *sql;
 	char *stmtname = NULL, *tmp = NULL;
 	UV linkid = 0;
@@ -211,13 +214,13 @@ CODE:
 	default:	
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::prepare(linkid = 0, query)" );
 	}
-	con = (MY_CON *) my_con_verify( linkid );
+	con = (MY_CON *) my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 	New( 1, stmtname, sizeof( DWORD ) * 2 + 3, char );
 	stmtname[0] = 's';
 	stmtname[1] = 't';
 	my_itoa( &stmtname[2], (int) con->stmt_counter ++, 16 );
-	printf( "using statement name [%s] %u\n", stmtname, con->stmt_counter - 1 );
+	//printf( "using statement name [%s] %u\n", stmtname, con->stmt_counter - 1 );
 	tmp = my_stmt_convert( sql, sqllen, &plen, NULL );
 	pstmt = PQprepare( con->con, stmtname, tmp, 0, NULL );
 	switch( PQresultStatus( pstmt ) ) {
@@ -243,12 +246,14 @@ OUTPUT:
 
 int
 bind_param( stmtid, p_num, val = NULL, type = 0 )
-UV stmtid
-unsigned long p_num
-SV *val
-char type
+	UV stmtid;
+	UV p_num;
+	SV *val;
+	char type;
+PREINIT:
+	dMY_CXT;
 CODE:
-	if( ! my_stmt_exists( stmtid ) )
+	if( ! my_stmt_exists( &MY_CXT, stmtid ) )
 		// statement does not exists
 		RETVAL = 0;
 	else
@@ -263,8 +268,9 @@ OUTPUT:
 
 UV
 execute( stmtid, ... )
-UV stmtid
+	UV stmtid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 	MY_STMT *stmt;
 	MY_RES *res;
@@ -272,7 +278,7 @@ PREINIT:
 	int i;
 	PGresult *pres = NULL;
 CODE:
-	if( ! my_stmt_exists( stmtid ) ) goto error;
+	if( ! my_stmt_exists( &MY_CXT, stmtid ) ) goto error;
 	stmt = (MY_STMT *) stmtid;
 	if( stmt->res != NULL ) {
 		if( stmt->res->bound )
@@ -328,9 +334,11 @@ OUTPUT:
 
 int
 free_result( resid )
-UV resid
+	UV resid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		if( ((MY_RES *) resid)->stmt == NULL )
 			my_result_rem( (MY_RES *) resid );
@@ -355,9 +363,11 @@ OUTPUT:
 
 UV
 num_fields( resid )
-UV resid
+	UV resid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		RETVAL = ( (MY_RES *) resid )->numfields;
 		break;
@@ -378,9 +388,11 @@ OUTPUT:
 
 UV
 num_rows( resid )
-UV resid
+	UV resid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		RETVAL = ( (MY_RES *) resid )->numrows;
 		break;
@@ -401,13 +413,14 @@ OUTPUT:
 
 void
 fetch_names( resid )
-UV resid
+	UV resid;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 	const char *name;
 	int num_fields, i;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -431,14 +444,15 @@ PPCODE:
 
 void
 fetch_field( resid, offset = -1 )
-UV resid
-long offset
+	UV resid;
+	long offset;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res = NULL;
 	const char *tmps;
 	UV tmpu;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -470,12 +484,13 @@ PPCODE:
 
 UV
 field_seek( resid, offset = 0 )
-UV resid
-unsigned long offset
+	UV resid;
+	UV offset;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -503,9 +518,11 @@ OUTPUT:
 
 UV
 field_tell( resid )
-UV resid
+	UV resid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case 1:
 		RETVAL = ( (MY_RES *) resid )->fieldpos;
 		break;
@@ -527,13 +544,14 @@ OUTPUT:
 
 void
 fetch_row( resid )
-UV resid
+	UV resid;
 PREINIT:
-	unsigned long i, l;
+	dMY_CXT;
+	UV i, l;
 	MY_RES *res;
 	const char *val;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -565,13 +583,14 @@ PPCODE:
 
 void
 fetch_col( resid )
-UV resid
+	UV resid;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 	DWORD i, l;
 	const char *val;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -601,13 +620,14 @@ PPCODE:
 
 void
 fetch_hash( resid )
-UV resid
+	UV resid;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 	DWORD i, l;
 	const char *val, *name;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -641,12 +661,13 @@ PPCODE:
 
 void
 fetch_lengths( resid )
-UV resid
+	UV resid;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 	DWORD i, s;
 PPCODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -669,12 +690,13 @@ PPCODE:
 
 long
 row_seek( resid, offset = 0 )
-UV resid
-unsigned long offset
+	UV resid;
+	UV offset;
 PREINIT:
+	dMY_CXT;
 	MY_RES *res;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		res = (MY_RES *) resid;
 		break;
@@ -702,9 +724,11 @@ OUTPUT:
 
 long
 row_tell( resid )
-UV resid
+	UV resid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_result( resid ) ) {
+	switch( my_stmt_or_result( &MY_CXT, resid ) ) {
 	case MY_TYPE_RES:
 		RETVAL = ( (MY_RES *) resid )->rowpos;
 		break;
@@ -724,6 +748,7 @@ OUTPUT:
 void
 insert_id( ... )
 PREINIT:
+	dMY_CXT;
 	UV linkid = 0;
 	int itemp = 0;
 	const char *field = NULL;
@@ -751,7 +776,7 @@ CODE:
 		schema = (const char *) SvPV_nolen( ST( itemp ) );
 		itemp ++;
 	}
-	switch( my_stmt_or_con( &linkid ) ) {
+	switch( my_stmt_or_con( &MY_CXT, &linkid ) ) {
 	case MY_TYPE_CON:
 		con = (MY_CON *) linkid;
 		break;
@@ -794,9 +819,11 @@ exit:
 
 UV
 affected_rows( linkid = 0 )
-UV linkid
+	UV linkid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	switch( my_stmt_or_con( &linkid ) ) {
+	switch( my_stmt_or_con( &MY_CXT, &linkid ) ) {
 	case MY_TYPE_CON:
 		RETVAL = ((MY_CON *) linkid)->affected_rows;
 		break;
@@ -816,7 +843,7 @@ OUTPUT:
 
 void
 quote( val )
-const char *val
+	const char *val;
 INIT:
 	char *res = 0;
 	int l, lmax, i, dp;
@@ -848,7 +875,7 @@ CLEANUP:
 
 void
 quote_id( p1, ... )
-const char *p1
+	const char *p1;
 INIT:
 	const char *str;
 	char *res = 0;
@@ -897,6 +924,7 @@ CLEANUP:
 unsigned int
 set_charset( ... )
 INIT:
+	dMY_CXT;
 	UV linkid = 0;
 	const char *charset;
 	MY_CON *con;
@@ -910,7 +938,7 @@ CODE:
 		itemp ++;
 	}
     charset = (const char *) SvPV_nolen( ST( itemp ) );
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 	res = PQsetClientEncoding( con->con, charset );
 	if( res != 0 ) goto error;
@@ -934,11 +962,12 @@ OUTPUT:
 
 const char *
 get_charset( linkid = 0 )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 CODE:
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	RETVAL = con != NULL ? con->charset : NULL;
 OUTPUT:
 	RETVAL
@@ -950,10 +979,10 @@ OUTPUT:
 
 char *
 sql_limit( sql, length, limit, offset = -1 )
-const char *sql
-unsigned long length
-long limit
-long offset
+	const char *sql;
+	unsigned long length;
+	long limit;
+	long offset;
 PREINIT:
 	char *res, *rp;
 	const char *fc;
@@ -1006,12 +1035,13 @@ CLEANUP:
 
 int
 auto_commit( linkid = 0, mode = 1 )
-UV linkid;
-int mode;
+	UV linkid;
+	int mode;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 CODE:
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 	if( mode ) {
 		if( ( con->my_flags & MYCF_AUTOCOMMIT ) == 0 )
@@ -1037,13 +1067,14 @@ OUTPUT:
 
 int
 begin_work( linkid )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 	PGresult *res;
 CODE:
 	RETVAL = 0;
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto exit;
 	if( ( con->my_flags & MYCF_TRANSACTION ) == 0 ) {
 		res = PQexec( con->con, "BEGIN" );
@@ -1068,13 +1099,14 @@ OUTPUT:
 
 int
 commit( linkid )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 	PGresult *res;
 CODE:
 	RETVAL = 0;
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto exit;
 	if( ( con->my_flags & MYCF_TRANSACTION ) != 0 ) {
 		res = PQexec( con->con, "COMMIT" );
@@ -1109,13 +1141,14 @@ OUTPUT:
 
 int
 rollback( linkid )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 	PGresult *res;
 CODE:
 	RETVAL = 0;
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto exit;
 	if( ( con->my_flags & MYCF_TRANSACTION ) != 0 ) {
 		res = PQexec( con->con, "ROLLBACK" );
@@ -1150,15 +1183,16 @@ OUTPUT:
 
 void
 show_catalogs( linkid = 0, wild = 0 )
-UV linkid
-const char *wild
+	UV linkid;
+	const char *wild;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 	PGresult *pres;
 	DWORD numrows, i, l;
 	const char *val;
 PPCODE:
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 	pres = PQexec( con->con, "select datname from pg_database" );
 	if( PQresultStatus( pres ) == PGRES_TUPLES_OK ) {
@@ -1180,7 +1214,8 @@ error:
 
 void
 show_tables( ... )
-INIT:
+PREINIT:
+	dMY_CXT;
 	UV linkid = 0;
 	const char *db = NULL;
 	const char *schema = NULL;
@@ -1209,7 +1244,7 @@ PPCODE:
 	}
 	if( itemp < items )
 		wild = (const char *) SvPV_nolen( ST( itemp ) );
-	con = my_con_verify( linkid );
+	con = my_con_verify( &MY_CXT, linkid );
 	if( con == NULL ) goto error;
 /*
 SELECT
@@ -1285,11 +1320,12 @@ error:
 
 int
 errno( linkid = 0 )
-UV linkid
+	UV linkid;
 PREINIT:
+	dMY_CXT;
 	MY_CON *con;
 CODE:
-	con = my_con_verify_noerror( linkid );
+	con = my_con_verify_noerror( &MY_CXT, linkid );
 	RETVAL = con != NULL ? PQstatus( con->con ) : 0;
 OUTPUT:
 	RETVAL
@@ -1301,13 +1337,13 @@ OUTPUT:
 
 void
 error( linkid = 0 )
-UV linkid
+	UV linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
 	const char *error;
 CODE:
-	con = my_con_verify_noerror( linkid );
+	con = my_con_verify_noerror( &MY_CXT, linkid );
 	if( con != NULL ) {
 		error = PQerrorMessage( con->con );
 		if( error[0] == '\0' ) error = con->my_error;
@@ -1327,8 +1363,10 @@ CODE:
 
 void
 _cleanup()
+PREINIT:
+	dMY_CXT;
 CODE:
-	my_cleanup();
+	my_cleanup( &MY_CXT );
 
 
 #/******************************************************************************
@@ -1337,8 +1375,10 @@ CODE:
 
 void
 _cleanupSession()
+PREINIT:
+	dMY_CXT;
 CODE:
-	my_cleanup_session();
+	my_cleanup_session( &MY_CXT );
 
 
 #/******************************************************************************
@@ -1347,8 +1387,10 @@ CODE:
 
 UV
 _verify_linkid( linkid = 0 )
-UV linkid
+	UV linkid;
+PREINIT:
+	dMY_CXT;
 CODE:
-	RETVAL = (UV) my_con_verify( linkid );
+	RETVAL = (UV) my_con_verify( &MY_CXT, linkid );
 OUTPUT:
 	RETVAL
