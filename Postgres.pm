@@ -18,7 +18,7 @@ use constant {
 };
 
 BEGIN {
-	$VERSION = '1.0.4';
+	$VERSION = '1.0.5';
 	
 	require XSLoader;
 	XSLoader::load( __PACKAGE__, $VERSION );

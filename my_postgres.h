@@ -16,8 +16,28 @@
 #define MYCF_TRANSACTION	1
 #define MYCF_AUTOCOMMIT		2
 
-#ifndef DWORD
+#undef DWORD
 #define DWORD unsigned long
+
+#undef UPTR
+#define UPTR unsigned long
+
+#undef HAS_UV64
+#if UVSIZE == 8
+#	define HAS_UV64
+#endif
+
+#undef XLONG
+#undef UXLONG
+#if defined __unix__
+#	define XLONG long long
+#	define UXLONG unsigned long long
+#elif defined __WIN__
+#	define XLONG __int64
+#	define UXLONG unsigned __int64
+#else
+#	define XLONG long
+#	define UXLONG unsigned long
 #endif
 
 #define MY_TYPE_CON		1
@@ -99,30 +119,30 @@ DWORD get_current_thread_id();
 
 void my_cleanup( my_cxt_t *cxt );
 void my_cleanup_session( my_cxt_t *cxt );
-int my_get_type( my_cxt_t *cxt, UV *ptr );
+int my_get_type( my_cxt_t *cxt, UPTR *ptr );
 
 MY_CON *my_con_add( my_cxt_t *cxt, PGconn *conn );
 void my_con_cleanup( MY_CON *con );
 void my_con_free( MY_CON *con );
 void my_con_rem( my_cxt_t *cxt, MY_CON *con );
-int my_con_exists( my_cxt_t *cxt, UV ptr );
+int my_con_exists( my_cxt_t *cxt, UPTR ptr );
 MY_CON *my_con_find_by_tid( my_cxt_t *cxt, DWORD tid );
-MY_CON *_my_con_verify( my_cxt_t *cxt, UV linkid, int error );
+MY_CON *_my_con_verify( my_cxt_t *cxt, UPTR linkid, int error );
 #define my_con_verify(cxt,linkid)	_my_con_verify( (cxt), (linkid), 1 )
 #define my_con_verify_noerror(cxt,linkid)	_my_con_verify( (cxt), (linkid), 0 )
 
 MY_RES *my_result_add( MY_CON *con, PGresult *pres );
 void my_result_free( MY_RES *res );
 void my_result_rem( MY_RES *res );
-int my_result_exists( my_cxt_t *cxt, UV ptr );
+int my_result_exists( my_cxt_t *cxt, UPTR ptr );
 
 char *my_stmt_convert( const char *sql, DWORD sqllen, DWORD *plen, DWORD *slen );
 MY_STMT *my_stmt_add( MY_CON *con, char *stmtname, DWORD plen );
 void my_stmt_free( MY_STMT *stmt );
 void my_stmt_rem( MY_STMT *stmt );
-int my_stmt_exists( my_cxt_t *cxt, UV ptr );
-int my_stmt_or_result( my_cxt_t *cxt, UV ptr );
-int my_stmt_or_con( my_cxt_t *cxt, UV *ptr );
+int my_stmt_exists( my_cxt_t *cxt, UPTR ptr );
+int my_stmt_or_result( my_cxt_t *cxt, UPTR ptr );
+int my_stmt_or_con( my_cxt_t *cxt, UPTR *ptr );
 int my_stmt_bind_param( MY_STMT *stmt, DWORD p_num, SV *val, char type );
 
 #endif

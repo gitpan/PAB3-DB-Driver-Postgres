@@ -42,20 +42,22 @@ void my_cleanup_session( my_cxt_t *cxt ) {
 	}
 }
 
-int my_get_type( my_cxt_t *cxt, UV *ptr ) {
+int my_get_type( my_cxt_t *cxt, UPTR *ptr ) {
 	MY_STMT *s1;
 	MY_CON *c1;
 	MY_RES *r1;
+	void *pp;
 	if( ! *ptr ) {
-		*ptr = (UV) my_con_verify( cxt, *ptr );
+		*ptr = (UPTR) my_con_verify( cxt, *ptr );
 		return *ptr != 0 ? MY_TYPE_CON : 0;
 	}
+	pp = (void *) *ptr;
 	for( c1 = cxt->firstcon; c1 != NULL; c1 = c1->next ) {
-		if( (UV) c1 == *ptr ) return MY_TYPE_CON;
+		if( c1 == pp ) return MY_TYPE_CON;
 		for( r1 = c1->firstres; r1 != NULL; r1 = r1->next )
-			if( (UV) r1 == *ptr ) return MY_TYPE_RES;
+			if( r1 == pp ) return MY_TYPE_RES;
 		for( s1 = c1->first_stmt; s1 != NULL; s1 = s1->next )
-			if( (UV) s1 == *ptr ) return MY_TYPE_STMT;
+			if( s1 == pp ) return MY_TYPE_STMT;
 	}
 	my_set_error( cxt, "Unknown link ID 0x%07X", *ptr );
 	return 0;
@@ -109,10 +111,10 @@ void my_con_rem( my_cxt_t *cxt, MY_CON *con ) {
 	my_con_free( con );
 }
 
-int my_con_exists( my_cxt_t *cxt, UV ptr ) {
+int my_con_exists( my_cxt_t *cxt, UPTR ptr ) {
 	MY_CON *c1;
 	for( c1 = cxt->firstcon; c1 != NULL; c1 = c1->next ) {
-		if( (UV) c1 == ptr ) return MY_TYPE_CON;
+		if( (UPTR) c1 == ptr ) return MY_TYPE_CON;
 	}
 	my_set_error( cxt, "Unknown connection ID 0x%07X", ptr );
 	return 0;
@@ -126,13 +128,13 @@ MY_CON *my_con_find_by_tid( my_cxt_t *cxt, DWORD tid ) {
 	return NULL;
 }
 
-MY_CON *_my_con_verify( my_cxt_t *cxt, UV linkid, int error ) {
+MY_CON *_my_con_verify( my_cxt_t *cxt, UPTR linkid, int error ) {
 	if( linkid ) {
 		return my_con_exists( cxt, linkid ) ? (MY_CON *) linkid : NULL;
 	}
 #ifdef USE_THREADS
 	else {
-		linkid = (UV) my_con_find_by_tid( cxt, get_current_thread_id() );
+		linkid = (UPTR) my_con_find_by_tid( cxt, get_current_thread_id() );
 		if( linkid ) return (MY_CON *) linkid;
 		if( error )
 			sprintf( cxt->lasterror, "No connection found" );
@@ -178,12 +180,12 @@ void my_result_rem( MY_RES *res ) {
 	my_result_free( res );
 }
 
-int my_result_exists( my_cxt_t *cxt, UV ptr ) {
+int my_result_exists( my_cxt_t *cxt, UPTR ptr ) {
 	MY_CON *con;
 	MY_RES *r1;
 	for( con = cxt->lastcon; con != NULL; con = con->prev ) {
 		for( r1 = con->lastres; r1 != NULL; r1 = r1->prev ) {
-			if( (UV) r1 == ptr ) return MY_TYPE_RES;
+			if( (UPTR) r1 == ptr ) return MY_TYPE_RES;
 		}
 	}
 	my_set_error( cxt, "Unknown result ID 0x%07X", ptr );
@@ -293,42 +295,42 @@ void my_stmt_rem( MY_STMT *stmt ) {
 	my_stmt_free( stmt );
 }
 
-int my_stmt_exists( my_cxt_t *cxt, UV ptr ) {
+int my_stmt_exists( my_cxt_t *cxt, UPTR ptr ) {
 	MY_CON *con;
 	MY_STMT *s1;
 	for( con = cxt->lastcon; con != NULL; con = con->prev ) {
 		for( s1 = con->last_stmt; s1 != NULL; s1 = s1->prev )
-			if( (UV) s1 == ptr ) return MY_TYPE_STMT;
+			if( (UPTR) s1 == ptr ) return MY_TYPE_STMT;
 	}
 	my_set_error( cxt, "Unknown statement ID 0x%07X", ptr );
 	return 0;
 }
 
-int my_stmt_or_result( my_cxt_t *cxt, UV ptr ) {
+int my_stmt_or_result( my_cxt_t *cxt, UPTR ptr ) {
 	MY_CON *con;
 	MY_RES *r1;
 	MY_STMT *s1;
 	for( con = cxt->lastcon; con != NULL; con = con->prev ) {
 		for( r1 = con->lastres; r1 != NULL; r1 = r1->prev )
-			if( (UV) r1 == ptr ) return MY_TYPE_RES;
+			if( (UPTR) r1 == ptr ) return MY_TYPE_RES;
 		for( s1 = con->last_stmt; s1 != NULL; s1 = s1->prev )
-			if( (UV) s1 == ptr ) return MY_TYPE_STMT;
+			if( (UPTR) s1 == ptr ) return MY_TYPE_STMT;
 	}
 	my_set_error( cxt, "Unknown result or statement ID 0x%07X", ptr );
 	return 0;
 }
 
-int my_stmt_or_con( my_cxt_t *cxt, UV *ptr ) {
+int my_stmt_or_con( my_cxt_t *cxt, UPTR *ptr ) {
 	MY_CON *con;
 	MY_STMT *stmt;
 	if( *ptr == 0 ) {
-		*ptr = (UV) my_con_verify( cxt, *ptr );
+		*ptr = (UPTR) my_con_verify( cxt, *ptr );
 		return *ptr != 0 ? MY_TYPE_CON : 0;
 	}
 	for( con = cxt->lastcon; con != NULL; con = con->prev ) {
-		if( (UV) con == *ptr ) return MY_TYPE_CON;
+		if( (UPTR) con == *ptr ) return MY_TYPE_CON;
 		for( stmt = con->last_stmt; stmt != NULL; stmt = stmt->prev )
-			if( (UV) stmt == *ptr ) return MY_TYPE_STMT;
+			if( (UPTR) stmt == *ptr ) return MY_TYPE_STMT;
 	}
 	my_set_error( cxt, "Unknown statement or connection ID 0x%07X", *ptr );
 	return 0;
