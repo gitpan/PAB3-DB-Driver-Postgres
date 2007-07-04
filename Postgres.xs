@@ -20,7 +20,7 @@ BOOT:
 # * _connect( [host [, user [, auth [, db [, port [, flags]]]]]] )
 # ******************************************************************************/
 
-U32
+void *
 _connect( server = NULL, user = NULL, auth = NULL, db = NULL, client_flag = 0 )
 	const char *server;
 	const char *user;
@@ -49,7 +49,7 @@ CODE:
 	if( PQstatus( pcon ) == CONNECTION_OK ) {
 		con = my_con_add( &MY_CXT, pcon );
 		con->client_flag = client_flag | MYCF_AUTOCOMMIT;
-		RETVAL = (U32) con;
+		RETVAL = con;
 	}
 	else {
 		s1 = PQerrorMessage( pcon );
@@ -67,7 +67,7 @@ OUTPUT:
 
 void
 close( linkid = 0 )
-	U32 linkid;
+	void *linkid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -90,7 +90,7 @@ CODE:
 
 int
 reconnect( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -115,11 +115,11 @@ OUTPUT:
 # * query( sql, [linkid] )
 # ******************************************************************************/
 
-U32
+IV
 query( ... )
 PREINIT:
 	dMY_CXT;
-	U32 linkid = 0;
+	void *linkid = NULL;
 	const char *sql;
 	MY_CON *con;
 	MY_RES *res;
@@ -129,7 +129,7 @@ PREINIT:
 CODE:
 	switch( items ) {
 	case 2:
-		linkid = (U32) SvUV( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( itemp ) ) );
 		itemp ++;
 	case 1:
 		sql = (const char *) SvPV_nolen( ST( itemp ) );
@@ -146,7 +146,7 @@ retry:
 	case PGRES_TUPLES_OK:
 		res = my_result_add( con, pres );
 		con->affected_rows = res->numrows;
-		RETVAL = (U32) res;
+		RETVAL = PTR2IV( res );
 		break;
 	case PGRES_COMMAND_OK:
 	case PGRES_COPY_OUT:
@@ -182,34 +182,31 @@ OUTPUT:
 # * prepare( [linkid, ] sql )
 # ******************************************************************************/
 
-U32
+IV
 prepare( ... )
 PREINIT:
 	dMY_CXT;
 	const char *sql;
 	char *stmtname = NULL, *tmp = NULL;
-	U32 linkid = 0;
+	void *linkid = NULL;
 	STRLEN sqllen = 0;
 	MY_CON *con;
+	MY_STMT *stmt;
 	PGresult *pstmt = NULL;
 	DWORD plen;
 	int itemp = 0;
 CODE:
 	switch( items ) {
 	case 3:
-		linkid = (U32) SvUV( ST( itemp ) );
-		itemp ++;
-		sql = (const char *) SvPV_nolen( ST( itemp ) );
-		sqllen = SvLEN( ST( itemp ) );
-		itemp ++;
-		stmtname = (char *) SvPV_nolen( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( 0 ) ) );
+		sql = (const char *) SvPVx( ST( 1 ), sqllen );
+		stmtname = (char *) SvPV_nolen( ST( 2 ) );
 		break;
 	case 2:
-		linkid = (U32) SvUV( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( 0 ) ) );
 		itemp ++;
 	case 1:
-		sql = (const char *) SvPV_nolen( ST( itemp ) );
-		sqllen = SvLEN( ST( itemp ) );
+		sql = (const char *) SvPVx( ST( itemp ), sqllen );
 		break;
 	default:	
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::prepare(linkid = 0, query)" );
@@ -225,7 +222,8 @@ CODE:
 	pstmt = PQprepare( con->con, stmtname, tmp, 0, NULL );
 	switch( PQresultStatus( pstmt ) ) {
 	case PGRES_COMMAND_OK:
-		RETVAL = (U32) my_stmt_add( con, stmtname, plen );
+		stmt = my_stmt_add( con, stmtname, plen );
+		RETVAL = PTR2IV( stmt );
 		goto exit;
 	default:
 		goto error;
@@ -246,7 +244,7 @@ OUTPUT:
 
 int
 bind_param( stmtid, p_num, val = NULL, type = 0 )
-	U32 stmtid;
+	void *stmtid;
 	U32 p_num;
 	SV *val;
 	char type;
@@ -266,9 +264,9 @@ OUTPUT:
 # * execute( stmtid, [*params] )
 # ******************************************************************************/
 
-U32
+IV
 execute( stmtid, ... )
-	U32 stmtid;
+	void *stmtid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -300,7 +298,7 @@ CODE:
 		stmt->res = res;
 		res->stmt = stmt;
 		con->affected_rows = res->numrows;
-		RETVAL = (U32) res;
+		RETVAL = PTR2IV( res );
 		break;
 	case PGRES_COMMAND_OK:
 		RETVAL = 1;
@@ -334,7 +332,7 @@ OUTPUT:
 
 int
 free_result( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -363,7 +361,7 @@ OUTPUT:
 
 U32
 num_fields( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -388,7 +386,7 @@ OUTPUT:
 
 U32
 num_rows( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -413,7 +411,7 @@ OUTPUT:
 
 void
 fetch_names( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 	MY_RES *res;
@@ -444,7 +442,7 @@ PPCODE:
 
 void
 fetch_field( resid, offset = -1 )
-	U32 resid;
+	void * resid;
 	long offset;
 PREINIT:
 	dMY_CXT;
@@ -484,7 +482,7 @@ PPCODE:
 
 U32
 field_seek( resid, offset = 0 )
-	U32 resid;
+	void * resid;
 	U32 offset;
 PREINIT:
 	dMY_CXT;
@@ -518,7 +516,7 @@ OUTPUT:
 
 U32
 field_tell( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -544,7 +542,7 @@ OUTPUT:
 
 void
 fetch_row( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 	DWORD i, l;
@@ -583,7 +581,7 @@ PPCODE:
 
 void
 fetch_col( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 	MY_RES *res;
@@ -620,7 +618,7 @@ PPCODE:
 
 void
 fetch_hash( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 	MY_RES *res;
@@ -661,7 +659,7 @@ PPCODE:
 
 void
 fetch_lengths( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 	MY_RES *res;
@@ -690,7 +688,7 @@ PPCODE:
 
 long
 row_seek( resid, offset = 0 )
-	U32 resid;
+	void * resid;
 	U32 offset;
 PREINIT:
 	dMY_CXT;
@@ -724,7 +722,7 @@ OUTPUT:
 
 long
 row_tell( resid )
-	U32 resid;
+	void * resid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -749,7 +747,7 @@ void
 insert_id( ... )
 PREINIT:
 	dMY_CXT;
-	U32 linkid = 0;
+	void * linkid = 0;
 	int itemp = 0;
 	const char *field = NULL;
 	const char *table = NULL;
@@ -761,7 +759,7 @@ CODE:
     if( items < 0 || items > 4 )
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::insert_id(linkid = 0, field = 0, table = 0, schema = 0)" );
 	if( SvIOK( ST( itemp ) ) ) {
-		linkid = (UV) SvUV( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( itemp ) ) );
 		itemp ++;
 	}
 	if( itemp < items ) {
@@ -819,7 +817,7 @@ exit:
 
 U32
 affected_rows( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 CODE:
@@ -925,7 +923,7 @@ unsigned int
 set_charset( ... )
 INIT:
 	dMY_CXT;
-	U32 linkid = 0;
+	void * linkid = 0;
 	const char *charset;
 	MY_CON *con;
 	STRLEN cslen;
@@ -934,7 +932,7 @@ CODE:
     if( items < 1 || items > 2 )
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::set_charset(linkid = 0, charset)" );
 	if( items > 1 ) {
-		linkid = (UV) SvUV( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( itemp ) ) );
 		itemp ++;
 	}
 	charset = SvPVx( ST( itemp ), cslen );
@@ -961,7 +959,7 @@ OUTPUT:
 
 const char *
 get_charset( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1034,7 +1032,7 @@ CLEANUP:
 
 int
 auto_commit( linkid = 0, mode = 1 )
-	U32 linkid;
+	void * linkid;
 	int mode;
 PREINIT:
 	dMY_CXT;
@@ -1066,7 +1064,7 @@ OUTPUT:
 
 int
 begin_work( linkid )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1098,7 +1096,7 @@ OUTPUT:
 
 int
 commit( linkid )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1140,7 +1138,7 @@ OUTPUT:
 
 int
 rollback( linkid )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1182,7 +1180,7 @@ OUTPUT:
 
 void
 show_catalogs( linkid = 0, wild = 0 )
-	U32 linkid;
+	void * linkid;
 	const char *wild;
 PREINIT:
 	dMY_CXT;
@@ -1215,7 +1213,7 @@ void
 show_tables( ... )
 PREINIT:
 	dMY_CXT;
-	U32 linkid = 0;
+	void *linkid = NULL;
 	const char *db = NULL;
 	const char *schema = NULL;
 	const char *wild = NULL;
@@ -1230,7 +1228,7 @@ PPCODE:
     if( items < 0 || items > 4 )
 		Perl_croak( aTHX_ "Usage: " __PACKAGE__ "::show_tables(linkid = 0, schema = NULL, db = NULL, wild = NULL)" );
 	if( SvIOK( ST( itemp ) ) ) {
-		linkid = (UV) SvUV( ST( itemp ) );
+		linkid = INT2PTR( void *, SvIV( ST( itemp ) ) );
 		itemp ++;
 	}
 	if( itemp < items ) {
@@ -1319,7 +1317,7 @@ error:
 
 int
 errno( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1336,7 +1334,7 @@ OUTPUT:
 
 void
 error( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 	MY_CON *con;
@@ -1384,12 +1382,12 @@ CODE:
 # * _verify_linkid( [linkid] );
 # ******************************************************************************/
 
-U32
+void *
 _verify_linkid( linkid = 0 )
-	U32 linkid;
+	void * linkid;
 PREINIT:
 	dMY_CXT;
 CODE:
-	RETVAL = (U32) my_con_verify( &MY_CXT, linkid );
+	RETVAL = (void *) my_con_verify( &MY_CXT, linkid );
 OUTPUT:
 	RETVAL

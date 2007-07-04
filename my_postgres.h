@@ -20,11 +20,11 @@
 #define DWORD unsigned long
 
 #undef UPTR
-#define UPTR unsigned long
+#define UPTR void *
 
 #undef HAS_UV64
 #if UVSIZE == 8
-#	define HAS_UV64
+#	define HAS_UV64 1
 #endif
 
 #undef XLONG
