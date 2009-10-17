@@ -1,10 +1,10 @@
 use 5.008;
-use ExtUtils::MakeMaker;
+use ExtUtils::MakeMaker ();
 use Config;
 
 require 'copy_dlls.PL';
 
-$Verbose = 0;
+$ExtUtils::MakeMaker::Verbose = 0;
 
 %os_supported = ( 'linux' => 1, 'MSWin32' => 1, 'darwin' => 1 );
 
@@ -17,7 +17,7 @@ our $TERM_CYAN			= "\033[36;1m";
 our $TERM_WHITE			= "\033[37;1m";
 our $TERM_RESET			= "\033[m";
 
-my $_useit = ! $PAB || ( $PAB && $PAB_OPT{'with_pgsql'} );
+my $_useit = !$PAB || ($PAB && $PAB_OPT{'with_pgsql'});
 
 %_LIBREQ = %_LIBS = ( 'pq' => 1 );
 @_LIB_PATH = qw(/usr/local/lib64 /usr/local/lib /usr/lib64 /usr/lib);
@@ -28,7 +28,7 @@ my $_useit = ! $PAB || ( $PAB && $PAB_OPT{'with_pgsql'} );
 $_LIBPREFIX = 'lib';
 $_BIN_DIR = '';
 
-if( ! $os_supported{$^O} ) {
+if( !$os_supported{$^O} ) {
 	if( $PAB && $PAB_OPT{'with_pgsql'} eq '_auto_' ) {
 		$_useit = 0;
 	}
@@ -49,6 +49,7 @@ EOF1
     ABSTRACT => 'Perl5 wrapper to libpgsql',
     XSPROTOARG => '-prototypes',
     PREREQ_PM => {},
+    DEFINE => '',
     OBJECT => '$(O_FILES)',
     XS => { 'Postgres.xs' => 'Postgres.c' },
     C => [ 'my_postgres.c', 'Postgres.c' ],
@@ -57,7 +58,7 @@ EOF1
 
 if( ! $_useit ) {
 	&donotuse();
-	WriteMakefile( %_MAKEOPTS );
+	ExtUtils::MakeMaker::WriteMakefile( %_MAKEOPTS );
 	$PAB ? return 1 : exit 0;
 }
 
@@ -112,6 +113,9 @@ if( $PAB_OPT{'with_pgsql'} ) {
 
 if( $Config{'usethreads'} ) {
 	$_MAKEOPTS{'DEFINE'} .= ' -DUSE_THREADS';
+}
+if( $^O eq 'MSWin32' ) {
+	$_MAKEOPTS{'DEFINE'} .= ' -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_NO_WARNINGS';
 }
 
 if( $^O ne 'linux' ) {
@@ -247,7 +251,7 @@ EOF1
 else {
 	rename '_t', 't' if -d '_t';
 }
-WriteMakefile( %_MAKEOPTS );
+ExtUtils::MakeMaker::WriteMakefile( %_MAKEOPTS );
 
 1;
 
@@ -272,4 +276,25 @@ sub donotuse {
 	$_MAKEOPTS{'PM'} = {};
     $_MAKEOPTS{'PL_FILES'} => {};
 	rename 't', '_t' if -d 't';
+}
+
+package MY;
+
+sub cflags {
+    my $inherited = shift->SUPER::cflags( @_ );
+    if( $^O eq 'MSWin32' ) {
+	    $inherited =~ s/-O1/-O2/sg;
+    	# set static linking to crt
+	    $inherited =~ s/-MD/-MT/sg;
+	}
+    $inherited;
+}
+
+sub const_loadlibs {
+    my $inherited = shift->SUPER::const_loadlibs( @_ );
+    if( $^O eq 'MSWin32' ) {
+    	# set static linking to crt
+	    $inherited =~ s/msvcrt\.lib/libcmt\.lib/sgi;
+	}
+    $inherited;
 }
